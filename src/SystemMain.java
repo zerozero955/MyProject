@@ -1,15 +1,15 @@
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
+import java.time.LocalDateTime;
+import java.util.*;
 
 public class SystemMain {
 
-    private static final Map<String, String> USERS = new HashMap<>();
+    /**Map升级为List<User>*/
+    private static final List<User> USERS_LIST = new ArrayList<>();
 
     public static void main(String[] args) {
         // 保留一组初始账号，避免全部依赖注册产生
-        USERS.put("admin", "123456");
-        USERS.put("student", "123456");
+        USERS_LIST.add(new User("admin", "123456", "admin", LocalDateTime.now()));
+        USERS_LIST.add(new User("student", "123456", "student", LocalDateTime.now()));
 
         Scanner sc = new Scanner(System.in);
         while (true) {
@@ -39,17 +39,15 @@ public class SystemMain {
         System.out.print("密码（至少6位）：");
         String password = sc.nextLine().trim();
 
-        if (!checkUsername(username)) {
+        if (!checkUsername(username)|| !checkPassword(password)) {
             return;
         }
-        if (!checkPassword(password)) {
-            return;
-        }
-        USERS.put(username, password);
-        System.out.println("注册成功，请返回首页登录！");
+        User user = new User(username, password, "student", LocalDateTime.now());
+        USERS_LIST.add(user);
+        System.out.println("注册成功: "+ user);
     }
 
-    /** 账号校验*/
+    /** 账号查重*/
     private static boolean checkUsername(String username) {
         if (username.isEmpty()) {
             System.out.println("用户名不能为空！");
@@ -59,9 +57,11 @@ public class SystemMain {
             System.out.println("用户名长度须在 3~16 个字符之间！");
             return false;
         }
-        if (USERS.containsKey(username)) {
-            System.out.println("该用户名已被注册，请更换！");
-            return false;
+        for (User u : USERS_LIST){
+            if (u.getUsername().equals(username)) {
+                System.out.println("该用户名已被注册，请更换！");
+                return false;
+            }
         }
         return true;
     }
@@ -80,7 +80,7 @@ public class SystemMain {
     }
 
     /** 登录 */
-    private static void login(Scanner sc) {
+    private static User login(Scanner sc) {
         System.out.print("账号：");
         String username = sc.nextLine().trim();
         System.out.print("密码：");
@@ -88,17 +88,21 @@ public class SystemMain {
 
         if (username.isEmpty() || password.isEmpty()) {
             System.out.println("账号和密码不能为空！");
-            return;
+            return null;
         }
-        String savedPwd = USERS.get(username);
-        if (savedPwd == null || !savedPwd.equals(password)) {
-            System.out.println("登录失败：账号或密码错误！");
-            return;
+
+        for (User u : USERS_LIST) {
+            if (u.getUsername().equals(username)) {
+                if(!u.getPassword().equals(password)){
+                    System.out.println("登录失败：账号或密码错误！");
+                    return null;
+                }
+                String roleName = "admin".equals(username) ? "管理员" : "同学";
+                System.out.println("登录成功，欢迎您，" + roleName + "！");
+                return u;
+            }
         }
-        if ("admin".equals(username)) {
-            System.out.println("登录成功，欢迎您，管理员！");
-        } else {
-            System.out.println("登录成功，欢迎您，同学！");
-        }
+        System.out.println("登录失败：账号不存在！");
+        return null;
     }
 }
