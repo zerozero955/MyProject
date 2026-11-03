@@ -3,7 +3,6 @@ import java.util.Scanner;
 
 public class SystemMain {
 
-    // ===== 任务1：内置两组固定测试账号（任务2 将删除并改为集合存储）=====
     private static final String ADMIN_NAME = "admin";
     private static final String ADMIN_PWD  = "123456";
     private static final String STU_NAME   = "student";
@@ -30,7 +29,7 @@ public class SystemMain {
         }
     }
 
-    /** 登录：读取账号密码，输出三路结果 */
+    /** 登录：读取账号密码 */
     private static void login(Scanner sc) {
         System.out.print("账号：");
         String username = sc.nextLine().trim();
