@@ -1,3 +1,5 @@
+package entity;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -36,7 +38,7 @@ public class User {
     /** 打印时不输出密码*/
     @Override
     public String toString() {
-        return "User{username='" + username + "', role='" + role
+        return "entity.User{username='" + username + "', role='" + role
                 + "', registerTime=" + registerTime + "}";
     }
 

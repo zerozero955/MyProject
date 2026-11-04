@@ -1,15 +1,23 @@
+import entity.User;
+import utils.FileUtil;
+import entity.User;
 import java.time.LocalDateTime;
 import java.util.*;
 
 public class SystemMain {
 
-    /**Map升级为List<User>*/
+    /**Map升级为List<entity.User>*/
     private static final List<User> USERS_LIST = new ArrayList<>();
 
     public static void main(String[] args) {
-        // 保留一组初始账号，避免全部依赖注册产生
-        USERS_LIST.add(new User("admin", "123456", "admin", LocalDateTime.now()));
-        USERS_LIST.add(new User("student", "123456", "student", LocalDateTime.now()));
+        //启动先加载磁盘数据
+        USERS_LIST.clear();
+        USERS_LIST.addAll(FileUtil.readUsers());
+        if (USERS_LIST.isEmpty()){
+            USERS_LIST.add(new User("admin", "123456", "admin", LocalDateTime.now()));
+            USERS_LIST.add(new User("student", "123456", "student", LocalDateTime.now()));
+            FileUtil.writeUsers(USERS_LIST);
+        }
 
         Scanner sc = new Scanner(System.in);
         while (true) {
@@ -44,6 +52,7 @@ public class SystemMain {
         }
         User user = new User(username, password, "student", LocalDateTime.now());
         USERS_LIST.add(user);
+        FileUtil.writeUsers(USERS_LIST);
         System.out.println("注册成功: "+ user);
     }
 
