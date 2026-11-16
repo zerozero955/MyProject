@@ -1,0 +1,1 @@
+R001,resource1,教室,AVAILABLE,1,

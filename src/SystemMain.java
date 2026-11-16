@@ -1,13 +1,13 @@
 import common.Result;
-import entity.CampusResource;
-import entity.ResourceStatus;
-import entity.User;
+import entity.*;
 import exception.*;
 import utils.FileUtil;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -15,7 +15,12 @@ public class SystemMain {
 
     private static final List<User> USERS_LIST = new ArrayList<>();
     private static final List<CampusResource> RESOURCE_LIST = new ArrayList<>();
+    private static final List<ReserveRecord> RESERVE_LIST = new ArrayList<>();
+
     private static final String RESOURCE_FILE = "resource.txt";
+    private static final String RESERVE_FILE = "reserve.txt";
+    private static final DateTimeFormatter TIME_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     /** 当前登录用户，null 表示未登录 */
     private static User currentUser;
@@ -30,6 +35,7 @@ public class SystemMain {
             FileUtil.writeUsers(USERS_LIST);
         }
         loadResources();
+        loadReserves();
 
         Scanner sc = new Scanner(System.in);
         while (true) {
@@ -69,7 +75,7 @@ public class SystemMain {
         }
     }
 
-    /* ==================== 统一结果输出 ==================== */
+    /* ==================== 统一输出 ==================== */
 
     /** 控制台唯一的结果出口：成功打印 msg + data，失败只打印 msg */
     private static void printResult(Result<?>result){
@@ -99,7 +105,7 @@ public class SystemMain {
 
     /*===============菜单==================*/
     private static void printLogMenu(){
-        System.out.println("========== 校园资源预约系统 V2.2 ==========");
+        System.out.println("========== 校园资源预约系统 V3.0 ==========");
         System.out.println("1. 登录");
         System.out.println("2. 注册");
         System.out.println("0. 退出");
@@ -109,11 +115,13 @@ public class SystemMain {
     private static void printAdminMenu(){
         System.out.println("========== 管理员菜单 (" + currentUser.getUsername() + ")==========");
         System.out.println("1. 新增校园资源");
-        System.out.println("2. 查询全部资源（按编号升序）");
+        System.out.println("2. 查询全部资源");
         System.out.println("3. 修改资源信息");
         System.out.println("4. 删除资源");
-        System.out.println("5. 查看全部用户");
-        System.out.println("6. 按名称搜索资源");
+        System.out.println("5. 查看全部预约");
+        System.out.println("6. 审核预约");
+        System.out.println("7. 按条件查询预约");
+        System.out.println("8. 查看全部用户");
         System.out.println("0. 退出登录");
         System.out.print("请输入选项：");
 
@@ -122,30 +130,33 @@ public class SystemMain {
     private static void printStudentMenu(){
         System.out.println("========== 学生菜单（" + currentUser.getUsername() + "）==========");
         System.out.println("1. 查看可预约资源");
-        System.out.println("2. 按名称搜索资源");
+        System.out.println("2. 提交预约申请");
+        System.out.println("3. 我的预约");
+        System.out.println("4. 取消预约");
         System.out.println("0. 退出登录");
         System.out.print("请输入选项：");
 
     }
     private static void dispatchLogin(String choice, Scanner sc){
         switch (choice) {
-            case "1":
-                printResult(login(sc));
+            case "1": printResult(login(sc));
                 break;
             case "2": printResult(register(sc));
                 break;
-            default:
-                System.out.println("输入有误，请重新选择！");
+            default: System.out.println("输入有误，请重新选择！");
         }
     }
     private static void dispatchAdmin(String choice, Scanner sc){
         switch (choice){
-            case "1": printResult(addResource(sc));        break;
-            case "2": printResult(queryAllResources());    break;
-            case "3": printResult(updateResource(sc));     break;
-            case "4": printResult(deleteResource(sc));     break;
-            case "5": printResult(queryAllUsers());        break;
-            case "6": printResult(searchByName(sc));       break;
+            case "1": printResult(addResource(sc));           break;
+            case "2": printResult(queryAllResources());       break;
+            case "3": printResult(updateResource(sc));        break;
+            case "4": printResult(deleteResource(sc));        break;
+            case "5": printResult(listAllReserve());          break;
+            case "6": printResult(auditReserve(sc));          break;
+            case "7": printResult(queryReserve(sc));          break;
+            case "8": printResult(queryAllUsers());           break;
+
             default:  System.out.println("输入有误，请重新选择！");
 
         }
@@ -153,7 +164,9 @@ public class SystemMain {
     private static void dispatchStudent(String choice, Scanner sc) {
         switch (choice) {
             case "1": printResult(listAvailableResources()); break;
-            case "2": printResult(searchByName(sc));       break;
+            case "2": printResult(submitReserve(sc));        break;
+            case "3": printResult(listMyReserve());          break;
+            case "4": printResult(cancelReserve(sc));        break;
             default:  System.out.println("输入有误，请重新选择！");
         }
     }
@@ -176,8 +189,7 @@ public class SystemMain {
         if (password.length() < 6) {
             return Result.fail("密码长度不能少于 6 位！");
         }
-        boolean exists = USERS_LIST.stream()
-                .anyMatch(u -> u.getUsername().equals(username));
+        boolean exists = USERS_LIST.stream().anyMatch(u -> u.getUsername().equals(username));
         if (exists) {
             return Result.fail("该用户名已被注册，请更换！");
         }
@@ -222,7 +234,7 @@ public class SystemMain {
         return Result.success("共 " + list.size() + " 个用户", list);
     }
 
-    /* ==================== 资源查询 ==================== */
+    /* ==================== 资源模块 ==================== */
     /** 可预约资源：filter + sorted + collect */
     private static Result<List<CampusResource>> listAvailableResources() {
         List<CampusResource> list = new ArrayList<>();
@@ -234,20 +246,6 @@ public class SystemMain {
         return Result.success("共 " + list.size() + " 条可预约资源", list);
     }
 
-    /** 名称模糊查询：忽略大小写 */
-    private static Result<List<CampusResource>> searchByName(Scanner sc) {
-        System.out.print("请输入资源名称关键词：");
-        String keyword = sc.nextLine().trim();
-        if (keyword.isEmpty()) {
-            return Result.fail("查询关键词不能为空");
-        }
-        String kw = keyword.toLowerCase();
-        List<CampusResource> list = RESOURCE_LIST.stream()
-                .filter(r -> r.getName() != null && r.getName().toLowerCase().contains(kw))
-                .sorted(Comparator.comparing(CampusResource::getId))
-                .collect(Collectors.toList());
-        return Result.success("共匹配到 " + list.size() + " 条资源", list);
-    }
 
     /**按编号升序查询全部（管理员）*/
     private static Result<List<CampusResource>> queryAllResources() {
@@ -260,27 +258,12 @@ public class SystemMain {
         return Result.success("共 " + list.size() + " 条资源", list);
     }
 
-    /**
-     * 多条件组合查询：状态 + 名称关键词 + 排序方向，三个条件都可为空
-     * 供后续迭代复用（本阶段菜单只用其中一部分）
-     */
-    private static List<CampusResource> query(ResourceStatus status, String keyword, boolean asc) {
-        return RESOURCE_LIST.stream()
-                .filter(r -> status == null || status == r.getStatus())
-                .filter(r -> keyword == null || keyword.trim().isEmpty()
-                        || r.getName().toLowerCase().contains(keyword.trim().toLowerCase()))
-                .sorted(asc ? Comparator.comparing(CampusResource::getId)
-                                                     : Comparator.comparing(CampusResource::getId).reversed())
-                .collect(Collectors.toList());
-    }
     /** 按 ID 查询：返回 Optional，调用方必须显式处理"查不到" */
     private static Optional<CampusResource> findById(String id) {
         if (id == null || id.trim().isEmpty()) {
             return Optional.empty();
         }
-        return RESOURCE_LIST.stream()
-                .filter(r -> r.getId().equals(id.trim()))
-                .findFirst();
+        return RESOURCE_LIST.stream().filter(r -> r.getId().equals(id.trim())).findFirst();
     }
 
     /* ==================== 资源增删改 ==================== */
@@ -359,12 +342,196 @@ public class SystemMain {
             return Result.fail("未找到 ID 为 " + id + " 的资源");
         }
         if (isReferencedByReserve(id)) {
-            return Result.fail("该资源存在关联预约记录，禁止删除");
+            return Result.fail("该资源存在已通过的预约记录，禁止删除");
         }
         RESOURCE_LIST.remove(opt.get());
         saveResources();
         return Result.success("资源删除成功");
     }
+
+    /* ==================== 预约模块（本阶核心） ==================== */
+    /** 学生提交预约：资源存在且可用，用户余额充足即可预约 */
+    private static Result<ReserveRecord> submitReserve(Scanner sc) {
+        if (isAdmin()){
+            return Result.fail("该操作仅学生可执行");
+        }
+        System.out.print("可预约资源 ID：");
+        List<CampusResource> available = RESOURCE_LIST.stream()
+                .filter(r ->ResourceStatus.AVAILABLE == r.getStatus())
+                .sorted(Comparator.comparing(CampusResource::getId))
+                .collect(Collectors.toList());
+        if (available.isEmpty()){
+            return Result.fail("目前没有可预约的资源");
+        }
+        available.forEach(System.out::println);
+
+        System.out.print("请选择要预约的资源 ID：");
+        String resourceId = sc.nextLine().trim();
+        Optional<CampusResource> optRes = findById(resourceId);
+        if (!optRes.isPresent()){
+            return Result.fail("未找到 ID 为 " + resourceId + " 的资源");
+        }
+        CampusResource resource = optRes.get();
+        if (ResourceStatus.AVAILABLE != resource.getStatus()){
+            return Result.fail("该资源当前状态为【" + resource.getStatus().getDesc() + "】，不可预约");
+        }
+
+        System.out.print("使用开始时间（yyyy-MM-dd HH:mm）：");
+        LocalDateTime start = parseTime(sc.nextLine().trim());
+        System.out.print("使用结束时间（yyyy-MM-dd HH:mm）：");
+        LocalDateTime end = parseTime(sc.nextLine().trim());
+        System.out.print("备注（可空）：");
+        String remark = sc.nextLine().trim();
+
+        if (start == null || end == null){
+            return Result.fail("时间格式错误，正确格式如 2025-06-01 09:00");
+        }
+        if (!end.isAfter(start)){
+            return Result.fail("结束时间必须晚于开始时间");
+        }
+        if (end.isBefore(LocalDateTime.now())){
+            return Result.fail("结束时间必须晚于当前时间");
+        }
+        if (hasTimeConflict(resourceId, start, end)) {
+            return Result.fail("该资源在指定时间已预约，请选择其他时间");
+        }
+
+        ReserveRecord record = new ReserveRecord(generateResourceId(), resourceId,
+                currentUser.getUsername(), LocalDateTime.now(), start, end,
+                ReserveStatus.PENDING, remark);
+        saveResources();
+        return Result.success("预约提交成功", record);
+    }
+
+    /** 时间冲突：同资源存在 PASS 且区间重叠（start < 已有 end && end > 已有 start） */
+    private static boolean hasTimeConflict(String resourceId, LocalDateTime start, LocalDateTime end) {
+        return RESERVE_LIST.stream()
+                .filter(r -> r.getResourceId().equals(resourceId))
+                .filter(r -> ReserveStatus.PASS == r.getStatus())
+                .anyMatch(r -> start.isBefore(r.getReserveEndTime())
+                        && end.isAfter(r.getReserveStartTime()));
+    }
+
+    private static LocalDateTime parseTime(String text) {
+        try {
+            return LocalDateTime.parse(text, TIME_FMT);
+        } catch (DateTimeException e){
+            return null;
+        }
+    }
+
+    private static String generateRecordId() {
+        int max = RESERVE_LIST.stream()
+                .mapToInt(r -> Integer.parseInt(r.getRecordId().substring(1)))
+                .max()
+                .orElse(0);
+        return String.format("Y%03d", max + 1);
+    }
+
+    /** 学生：我的预约（Stream 过滤当前用户） */
+    private static Result<List<ReserveRecord>> listMyReserve(){
+        List<ReserveRecord> mine = RESERVE_LIST.stream()
+                .filter(r -> r.getApplicantUsername().equals(currentUser.getUsername()))
+                .sorted(Comparator.comparing(ReserveRecord::getApplyTime).reversed())
+                .collect(Collectors.toList());
+        return Result.success("共 " + mine.size() + " 条预约", mine);
+    }
+
+    /** 学生：取消预约（仅待审核 / 已通过可取消） */
+    private static Result<Void> cancelReserve(Scanner sc){
+        System.out.print("请输入要取消的预约编号：");
+        String recordId = sc.nextLine().trim();
+        Optional<ReserveRecord> opt = RESERVE_LIST.stream()
+                .filter(r -> r.getRecordId().equals(recordId))
+                .findFirst();
+        if (!opt.isPresent()) {
+            return Result.fail("未找到编号为 " + recordId + " 的预约记录");
+        }
+        ReserveRecord record = opt.get();
+        if (!record.getApplicantUsername().equals(currentUser.getUsername())) {
+            return Result.fail("无权操作他人的预约记录");
+        }
+        if (ReserveStatus.REJECT == record.getStatus() || ReserveStatus.CANCEL == record.getStatus()) {
+            return Result.fail("该预约已" + record.getStatus().getDesc() + "，不能取消");
+        }
+        boolean wasPassed = ReserveStatus.PASS == record.getStatus();
+        record.setStatus(ReserveStatus.CANCEL);
+        if (wasPassed) {
+            findById(record.getResourceId()).ifPresent(r -> r.setStatus(ResourceStatus.AVAILABLE));
+            saveResources();
+        }
+        saveReserves();
+        return Result.success("预约已取消");
+    }
+
+    /** 管理员：全部预约 */
+    private static Result<List<ReserveRecord>> listAllReserve() {
+        if (!isAdmin()) {
+            return Result.fail("仅管理员可查看全部预约");
+        }
+        List<ReserveRecord> list = RESERVE_LIST.stream()
+                .sorted(Comparator.comparing(ReserveRecord::getApplyTime).reversed())
+                .collect(Collectors.toList());
+        return Result.success("共 " + list.size() + " 条预约记录", list);
+    }
+
+    /** 管理员：审核（pass=true 通过 / false 驳回） */
+    private static Result<Void> auditReserve(Scanner sc) {
+        if (!isAdmin()) {
+            return Result.fail("仅管理员可执行预约审核");
+        }
+        System.out.print("请输入要审核的预约编号：");
+        String recordId = sc.nextLine().trim();
+        Optional<ReserveRecord> opt = RESERVE_LIST.stream()
+                .filter(r -> r.getRecordId().equals(recordId))
+                .findFirst();
+        if (!opt.isPresent()) {
+            return Result.fail("未找到编号为 " + recordId + " 的预约记录");
+        }
+        ReserveRecord record = opt.get();
+        System.out.print("审核结果（1 通过 / 2 驳回）：");
+        String flag = sc.nextLine().trim();
+        if (!"1".equals(flag) && !"2".equals(flag)) {
+            return Result.fail("审核结果只能输入 1 或 2");
+        }
+        boolean pass = "1".equals(flag);
+        record.setStatus(pass ? ReserveStatus.PASS : ReserveStatus.REJECT);
+        if (pass) {
+            findById(record.getResourceId()).ifPresent(r -> r.setStatus(ResourceStatus.OCCUPIED));
+            saveResources();
+        }
+        saveReserves();
+        return Result.success(pass ? "审核通过，资源已置为占用" : "已驳回该预约申请");
+    }
+
+    /** 管理员：按条件查询预约（资源 ID / 申请人 / 状态，均可为空） */
+    private static Result<List<ReserveRecord>> queryReserve(Scanner sc) {
+        if (!isAdmin()) {
+            return Result.fail("仅管理员可查询全部预约");
+        }
+        System.out.print("资源 ID（回车跳过）：");
+        String resourceId = sc.nextLine().trim();
+        System.out.print("申请人用户名（回车跳过）：");
+        String applicant = sc.nextLine().trim();
+        System.out.print("状态（PENDING/PASS/REJECT/CANCEL，回车跳过）：");
+        String statusText = sc.nextLine().trim();
+        ReserveStatus status = null;
+        if (!statusText.isEmpty()) {
+            try {
+                status = ReserveStatus.valueOf(statusText.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return Result.fail("状态只能是 PENDING / PASS / REJECT / CANCEL");
+            }
+        }
+        ReserveStatus finalStatus = status;
+        List<ReserveRecord> list = RESERVE_LIST.stream()
+                .filter(r -> resourceId.isEmpty() || r.getResourceId().equals(resourceId))
+                .filter(r -> applicant.isEmpty() || r.getApplicantUsername().equals(applicant))
+                .filter(r -> finalStatus == null || finalStatus == r.getStatus())
+                .collect(Collectors.toList());
+        return Result.success("共 " + list.size() + " 条记录", list);
+    }
+
 
     /* ==================== 工具方法 ==================== */
 
@@ -381,9 +548,11 @@ public class SystemMain {
         return String.format("R%03d", max + 1);
     }
 
-    /** 占位：固定返回 false*/
+    /** 资源删除校验升级：存在 PASS 记录的资源禁止删除 */
     private static boolean isReferencedByReserve(String resourceId) {
-        return false;
+        return RESERVE_LIST.stream()
+                .anyMatch(r -> r.getResourceId().equals(resourceId)
+                        && ReserveStatus.PASS == r.getStatus());
     }
 
     /* ==================== 持久化 ==================== */
@@ -432,4 +601,46 @@ public class SystemMain {
         }
     }
 
+
+    private static void loadReserves() {
+        RESERVE_LIST.clear();
+        FileUtil.ensureFile(RESERVE_FILE);
+        File file = new File(RESERVE_FILE);
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                String[] a = line.split(",", -1);
+                if (a.length < 8) {
+                    continue;
+                }
+                RESERVE_LIST.add(new ReserveRecord(a[0], a[1], a[2],
+                        LocalDateTime.parse(a[3]), LocalDateTime.parse(a[4]),
+                        LocalDateTime.parse(a[5]), ReserveStatus.valueOf(a[6]), a[7]));
+            }
+        } catch (IOException e) {
+            System.out.println("[提示] 预约数据读取失败，已按空数据处理");
+        }
+    }
+
+    private static void saveReserves() {
+        FileUtil.ensureFile(RESERVE_FILE);
+        try (BufferedWriter bw = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(RESERVE_FILE), StandardCharsets.UTF_8))) {
+            for (ReserveRecord r : RESERVE_LIST) {
+                bw.write(r.getRecordId() + "," + r.getResourceId() + ","
+                        + r.getApplicantUsername() + "," + r.getApplyTime() + ","
+                        + r.getReserveStartTime() + "," + r.getReserveEndTime() + ","
+                        + r.getStatus().name() + ","
+                        + (r.getRemark() == null ? "" : r.getRemark()));
+                bw.newLine();
+            }
+            bw.flush();
+        } catch (IOException e) {
+            throw new BusinessException("保存预约数据失败", e);
+        }
+    }
 }
