@@ -11,7 +11,7 @@ import java.util.Scanner;
 
 
 /**
- * 管理员菜单：只做输入收集与 Result 展示，业务全部在 Service
+ * 管理员菜单：审核拆成\u201c看列表 -> 选结果 -> 驳回填原因\u201d三步，业务全部在 Service
  */
 public class AdminMenu {
     private final Scanner sc;
@@ -36,10 +36,12 @@ public class AdminMenu {
             System.out.println("2. 查询全部资源");
             System.out.println("3. 修改资源信息");
             System.out.println("4. 删除资源");
-            System.out.println("5. 查看全部预约");
-            System.out.println("6. 审核预约");
-            System.out.println("7. 按条件查询预约");
-            System.out.println("8. 查看全部用户");
+            System.out.println("5. 查看待审核预约");
+            System.out.println("6. 审核预约（通过 / 驳回）");
+            System.out.println("7. 查看全部预约");
+            System.out.println("8. 按条件查询预约");
+            System.out.println("9. 查看全部用户");
+
             System.out.println("0. 退出登录");
             System.out.print("请输入选项：");
             String choice = sc.nextLine().trim();
@@ -57,10 +59,11 @@ public class AdminMenu {
             case "2": doQueryAll();     break;
             case "3": doUpdate();       break;
             case "4": doDelete();       break;
-            case "5": doListReserve();  break;
+            case "5": doPending();      break;
             case "6": doAudit();        break;
-            case "7": doQueryReserve(); break;
-            case "8": doListUsers();    break;
+            case "7": doListReserve();  break;
+            case "8": doQueryReserve(); break;
+            case "9": doListUsers();    break;
             default:  System.out.println("输入有误，请重新选择！");
         }
     }
@@ -104,20 +107,30 @@ public class AdminMenu {
         printResult(resourceService.delete(id, operator));
     }
 
-    private void doListReserve() {
-        printResult(reserveService.listAll(operator));
+    private void doPending() {
+        printResult(reserveService.listPending(operator));
     }
 
     private void doAudit() {
+        printResult(reserveService.listPending(operator));
         System.out.print("要审核的预约编号：");
         String recordId = sc.nextLine().trim();
         System.out.print("审核结果（1 通过 / 2 驳回）：");
         String flag = sc.nextLine().trim();
-        if (!"1".equals(flag) && !"2".equals(flag)) {
+        if ("1".equals(flag)) {
+            printResult(reserveService.auditPass(recordId, operator));
+        } else if ("2".equals(flag)) {
+            System.out.print("请输入驳回原因：");
+            String reason = sc.nextLine().trim();
+            printResult(reserveService.auditReject(recordId, reason, operator));
+        } else {
             System.out.println("[失败] 审核结果只能输入 1 或 2");
-            return;
         }
-        printResult(reserveService.audit(recordId, "1".equals(flag), operator));
+
+    }
+
+    private void doListReserve() {
+        printResult(reserveService.listAll(operator));
     }
 
     private void doQueryReserve() {

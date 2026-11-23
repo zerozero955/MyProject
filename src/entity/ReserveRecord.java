@@ -3,7 +3,7 @@ package entity;
 import java.time.LocalDateTime;
 
 /**
- * 预约记录实体：只承载数据，状态流转规则在业务方法中实现
+ * 预约记录实体：只承载数据；状态流转规则在 ReserveRecordService 的状态机里
  * */
 
 public class ReserveRecord {
@@ -16,6 +16,8 @@ public class ReserveRecord {
     private LocalDateTime reserveEndTime;  // 使用结束时间
     private ReserveStatus status;          // 预约状态
     private String remark;                 // 备注
+    private String rejectReason;           // 驳回原因（仅 REJECT 时有值）
+    private LocalDateTime auditTime;       // 审核时间（审核动作发生时回填）
 
     public ReserveRecord(){
 
@@ -82,6 +84,10 @@ public class ReserveRecord {
     public void setRemark(String remark) {
         this.remark = remark;
     }
+    public String getRejectReason(){return rejectReason;}
+    public void setRejectReason(String rejectReason){this.rejectReason = rejectReason;}
+    public LocalDateTime getAuditTime() {return auditTime;}
+    public void setAuditTime(LocalDateTime auditTime) {this.auditTime = auditTime;}
 
     @Override
     public String toString() {
@@ -90,4 +96,16 @@ public class ReserveRecord {
                 + " | " + (status == null ? "" : status.getDesc())
                 + (remark == null || remark.isEmpty() ? "" : " | 备注：" + remark);
     }
+    /**列表展示：状态 + 驳回原因 + 审核时间（学生端"我的预约"用它）*/
+    public String toDisplayString() {
+        StringBuilder sb = new StringBuilder(toString());
+        if (ReserveStatus.REJECT == status && rejectReason != null && !rejectReason.isEmpty()) {
+            sb.append(" | 驳回原因：").append(rejectReason);
+        }
+        if (auditTime != null) {
+            sb.append(" | 审核时间：").append(auditTime);
+        }
+        return sb.toString();
+    }
+
 }

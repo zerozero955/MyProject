@@ -1,6 +1,7 @@
 package ui.console;
 
 import common.Result;
+import entity.ReserveRecord;
 import entity.User;
 import service.ReserveRecordService;
 import service.ResourceService;
@@ -66,10 +67,22 @@ public class StudentMenu {
     }
 
     private void doMine() {
-        printResult(reserveService.listMine(operator));
+        Result<java.util.List<ReserveRecord>> result = reserveService.listMine(operator);
+        if (!result.isSuccess()) {
+            System.out.println("[失败] " + result.getMsg());
+            return;
+        }
+        if (result.getData().isEmpty()) {
+            System.out.println("（暂无预约记录）");
+            return;
+        }
+        for (ReserveRecord r : result.getData()) {
+            System.out.println(r.toDisplayString());
+        }
     }
 
     private void doCancel() {
+        System.out.println("提示：只有【待审核】【已通过】的预约可以取消");
         System.out.print("要取消的预约编号：");
         String recordId = sc.nextLine().trim();
         printResult(reserveService.cancel(recordId, operator));

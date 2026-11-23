@@ -13,8 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 预约数据访问层：只负责 reserve.txt 的读写
+ * 预约数据访问层：reserve.txt 读写（任务11 起为 10 列）
+ * recordId,resourceId,applicant,applyTime,start,end,status,remark,rejectReason,auditTime
  */
+
 
 public class ReserveRecordDao {
     private static final String FILE = "reserve.txt";
@@ -30,14 +32,21 @@ public class ReserveRecordDao {
                 if (line.trim().isEmpty()) {
                     continue;
                 }
-                // recordId,resourceId,applicant,applyTime,start,end,status,remark
                 String[] a = line.split(",", -1);
                 if (a.length < 8) {
                     continue;
                 }
-                list.add(new ReserveRecord(a[0], a[1], a[2],
+                ReserveRecord r = new ReserveRecord(a[0], a[1], a[2],
                         LocalDateTime.parse(a[3]), LocalDateTime.parse(a[4]),
-                        LocalDateTime.parse(a[5]), ReserveStatus.valueOf(a[6]), a[7]));
+                        LocalDateTime.parse(a[5]), ReserveStatus.valueOf(a[6]), a[7]);
+                if (a.length > 8 && !a[8].isEmpty()) {
+                    r.setRejectReason(a[8]);
+                }
+                if (a.length > 9 && !a[9].isEmpty()) {
+                    r.setAuditTime(LocalDateTime.parse(a[9]));
+                }
+                list.add(r);
+
             }
         } catch (IOException e) {
             throw new BusinessException("加载预约数据失败", e);
@@ -54,7 +63,10 @@ public class ReserveRecordDao {
                         + r.getApplicantUsername() + "," + r.getApplyTime() + ","
                         + r.getReserveStartTime() + "," + r.getReserveEndTime() + ","
                         + r.getStatus().name() + ","
-                        + (r.getRemark() == null ? "" : r.getRemark()));
+                        + (r.getRemark() == null ? "" : r.getRemark()) + ","
+                        + (r.getRejectReason() == null ? "" : r.getRejectReason()) + ","
+                        + (r.getAuditTime() == null ? "" : r.getAuditTime()));
+
                 bw.newLine();
             }
             bw.flush();
