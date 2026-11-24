@@ -19,6 +19,18 @@ import java.util.List;
 
 
 public class ReserveRecordDao {
+
+    /** 饿汉单例：类加载即创建，JVM 保证线程安全 */
+    private static final ReserveRecordDao INSTANCE = new ReserveRecordDao();
+
+    public static ReserveRecordDao getInstance() {
+        return INSTANCE;
+    }
+
+    /** 私有构造：禁止外部 new，创建动作只能走 getInstance() */
+    private ReserveRecordDao() {
+    }
+
     private static final String FILE = "reserve.txt";
 
     public List<ReserveRecord> loadAll() {

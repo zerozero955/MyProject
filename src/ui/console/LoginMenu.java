@@ -27,7 +27,7 @@ public class LoginMenu {
 
     public void start() {
         while (true) {
-            System.out.println("========== 校园资源预约系统 V3.1 ==========");
+            System.out.println("========== 校园资源预约系统 V3.3 ==========");
             System.out.println("1. 登录");
             System.out.println("2. 注册");
             System.out.println("0. 退出");

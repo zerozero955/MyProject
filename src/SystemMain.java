@@ -10,9 +10,10 @@ import ui.console.LoginMenu;
 
 public class SystemMain {
     public static void main(String[] args) {
-        UserService userService = new UserService();
-        ResourceService resourceService = new ResourceService();
-        ReserveRecordService reserveService = new ReserveRecordService(resourceService);
+        // 三个 Service 都是饿汉单例：这里只"取"，全程序不再出现 new XxxService()
+        UserService userService = UserService.getInstance();
+        ResourceService resourceService = ResourceService.getInstance();
+        ReserveRecordService reserveService = ReserveRecordService.getInstance();
 
         LoginMenu loginMenu = new LoginMenu(userService, resourceService, reserveService);
         loginMenu.start();

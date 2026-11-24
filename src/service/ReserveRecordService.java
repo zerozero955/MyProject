@@ -1,6 +1,7 @@
 package service;
 
 import common.Result;
+import dao.DaoFactory;
 import dao.ReserveRecordDao;
 import entity.*;
 import exception.*;
@@ -34,12 +35,20 @@ public class ReserveRecordService {
     }
 
 
-    private final ReserveRecordDao reserveDao = new ReserveRecordDao();
+    /** 饿汉单例 */
+    private static final ReserveRecordService INSTANCE = new ReserveRecordService();
+    public static ReserveRecordService getInstance() {
+        return INSTANCE;
+    }
+
+    private final ReserveRecordDao reserveDao;
     private final List<ReserveRecord> records;
     private final ResourceService resourceService;
 
-    public ReserveRecordService(ResourceService resourceService) {
-        this.resourceService = resourceService;
+    /** 私有构造：依赖的两个对象都从工厂/单例取，不再由外部传入 */
+    private ReserveRecordService() {
+        this.reserveDao = DaoFactory.getReserveRecordDao();
+        this.resourceService = ResourceService.getInstance();
         this.records = reserveDao.loadAll();
     }
 

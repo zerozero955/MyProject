@@ -1,6 +1,7 @@
 package service;
 
 import common.Result;
+import dao.DaoFactory;
 import dao.ResourceDao;
 import entity.CampusResource;
 import entity.ResourceStatus;
@@ -16,10 +17,19 @@ import java.util.stream.Collectors;
  */
 
 public class ResourceService {
-    private final ResourceDao resourceDao = new ResourceDao();
+
+    /** 饿汉单例：资源数据只加载一次，避免多份内存副本 */
+    private static final ResourceService INSTANCE = new ResourceService();
+
+    public static ResourceService getInstance() {
+        return INSTANCE;
+    }
+
+    private final ResourceDao resourceDao;
     private final List<CampusResource> resources;
 
-    public ResourceService() {
+    private ResourceService() {
+        this.resourceDao = DaoFactory.getResourceDao();
         this.resources = resourceDao.loadAll();
     }
 

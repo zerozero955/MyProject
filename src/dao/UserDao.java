@@ -16,6 +16,18 @@ import java.util.Optional;
  * 用户数据访问层：只负责user.txt的读写，不做业务逻辑处理
  */
 public class UserDao {
+
+    /** 饿汉单例：类加载即创建，JVM 保证线程安全 */
+    private static final UserDao INSTANCE = new UserDao();
+
+    public static UserDao getInstance(){
+        return INSTANCE;
+    }
+
+    /** 私有构造：禁止外部 new，创建动作只能走 getInstance() */
+    private UserDao() {
+    }
+
     private static final String FILE = "user.txt";
     private static final DateTimeFormatter FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

@@ -1,6 +1,7 @@
 package service;
 
 import common.Result;
+import dao.DaoFactory;
 import dao.UserDao;
 import entity.User;
 
@@ -11,10 +12,18 @@ import java.util.Optional;
 /**
  * 用户业务层：承接校验与Result组装；依赖UserDao，不依赖UI*/
 public class UserService {
-    private final UserDao userDao = new UserDao();
+    /** 饿汉单例：保证全局只有一个用户服务实例 */
+    private static final UserService INSTANCE = new UserService();
+
+    public static UserService getInstance(){
+        return INSTANCE;
+    }
+    /** DAO 由工厂提供，不再自己 new */
+    private final UserDao userDao;
     private final List<User> users;
 
-    public UserService(){
+    private UserService() {
+        this.userDao = DaoFactory.getUserDao();
         this.users = userDao.loadAll();
         if (users.isEmpty()){                // 首次运行写入初始账号
             users.add(new User("admin", "123456", "admin", LocalDateTime.now()));
