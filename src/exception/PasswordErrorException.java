@@ -1,5 +1,7 @@
 package exception;
 
+import common.BusinessException;
+
 /** 密码错误 */
 public class PasswordErrorException extends BusinessException {
     public PasswordErrorException() {

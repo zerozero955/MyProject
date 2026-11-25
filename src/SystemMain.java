@@ -1,7 +1,7 @@
 import service.ReserveRecordService;
 import service.ResourceService;
 import service.UserService;
-import ui.console.LoginMenu;
+import view.MainView;
 
 /**
  * 程序入口：只负责启动，不写任何业务
@@ -15,8 +15,9 @@ public class SystemMain {
         ResourceService resourceService = ResourceService.getInstance();
         ReserveRecordService reserveService = ReserveRecordService.getInstance();
 
-        LoginMenu loginMenu = new LoginMenu(userService, resourceService, reserveService);
-        loginMenu.start();
+        // 入口只启动视图，业务全部由 view -> controller -> service 完成
+        new MainView().start();
+
     }
 
 }

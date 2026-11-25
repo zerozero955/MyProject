@@ -1,9 +1,12 @@
 package service;
 
+import common.BusinessException;
 import common.Result;
 import dao.DaoFactory;
 import dao.ReserveRecordDao;
 import entity.*;
+import enums.ReserveStatus;
+import enums.ResourceStatus;
 import exception.*;
 
 import java.time.LocalDateTime;

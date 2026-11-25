@@ -4,7 +4,7 @@ import common.Result;
 import dao.DaoFactory;
 import dao.ResourceDao;
 import entity.CampusResource;
-import entity.ResourceStatus;
+import enums.ResourceStatus;
 import entity.User;
 
 import java.util.Comparator;

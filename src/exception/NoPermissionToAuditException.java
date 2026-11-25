@@ -1,5 +1,7 @@
 package exception;
 
+import common.BusinessException;
+
 /** 无权审核：只有管理员可以审核预约 */
 public class NoPermissionToAuditException extends BusinessException {
     public NoPermissionToAuditException() {

@@ -1,4 +1,4 @@
-package entity;
+package enums;
 
 import exception.ParamEmptyException;
 

@@ -1,5 +1,7 @@
 package exception;
 
+import common.BusinessException;
+
 /** 参数为空 / 不合法 */
 public class ParamEmptyException extends BusinessException {
     public ParamEmptyException() {

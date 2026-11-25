@@ -1,5 +1,7 @@
 package exception;
 
+import common.BusinessException;
+
 /** 用户不存在：登录/查询时账号查不到 */
 public class UserNotFoundException extends BusinessException {
     public UserNotFoundException() {

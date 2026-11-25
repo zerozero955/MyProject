@@ -1,7 +1,7 @@
 package dao;
 
 import entity.User;
-import exception.BusinessException;
+import common.BusinessException;
 import utils.FileUtil;
 
 import java.io.*;

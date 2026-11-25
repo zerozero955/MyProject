@@ -1,49 +1,32 @@
-package ui.console;
+package view;
 
 import common.Result;
-import entity.ReserveStatus;
+import controller.ReserveController;
+import controller.ResourceController;
+import controller.UserController;
 import entity.User;
-import service.ReserveRecordService;
-import service.ResourceService;
-import service.UserService;
 
+import java.util.List;
 import java.util.Scanner;
 
-
 /**
- * 管理员菜单：审核拆成\u201c看列表 -> 选结果 -> 驳回填原因\u201d三步，业务全部在 Service
+ * 管理员视图：9 项菜单，只负责收集输入与展示 Result
  */
-public class AdminMenu {
-    private final Scanner sc;
-    private final User operator;
-    private final UserService userService;
-    private final ResourceService resourceService;
-    private final ReserveRecordService reserveService;
+public class AdminView {
 
-    public AdminMenu(Scanner sc, User operator, UserService userService,
-                     ResourceService resourceService, ReserveRecordService reserveService) {
-        this.sc = sc;
+    private final Scanner sc = new Scanner(System.in);
+    private final User operator;
+    private final UserController userController = new UserController();
+    private final ResourceController resourceController = new ResourceController();
+    private final ReserveController reserveController = new ReserveController();
+
+    public AdminView(User operator){
         this.operator = operator;
-        this.userService = userService;
-        this.resourceService = resourceService;
-        this.reserveService = reserveService;
     }
 
     public void start() {
         while (true) {
-            System.out.println("========== 管理员菜单（" + operator.getUsername() + "）==========");
-            System.out.println("1. 新增校园资源");
-            System.out.println("2. 查询全部资源");
-            System.out.println("3. 修改资源信息");
-            System.out.println("4. 删除资源");
-            System.out.println("5. 查看待审核预约");
-            System.out.println("6. 审核预约（通过 / 驳回）");
-            System.out.println("7. 查看全部预约");
-            System.out.println("8. 按条件查询预约");
-            System.out.println("9. 查看全部用户");
-
-            System.out.println("0. 退出登录");
-            System.out.print("请输入选项：");
+            printMenu();
             String choice = sc.nextLine().trim();
             if ("0".equals(choice)) {
                 System.out.println("已退出登录");
@@ -51,6 +34,21 @@ public class AdminMenu {
             }
             handle(choice);
         }
+    }
+
+    private void printMenu() {
+        System.out.println("========== 管理员菜单（" + operator.getUsername() + "）==========");
+        System.out.println("1. 新增校园资源");
+        System.out.println("2. 查询全部资源");
+        System.out.println("3. 修改资源信息");
+        System.out.println("4. 删除资源");
+        System.out.println("5. 查看待审核预约");
+        System.out.println("6. 审核预约（通过 / 驳回）");
+        System.out.println("7. 查看全部预约");
+        System.out.println("8. 按条件查询预约");
+        System.out.println("9. 查看全部用户");
+        System.out.println("0. 退出登录");
+        System.out.print("请输入选项：");
     }
 
     private void handle(String choice) {
@@ -61,7 +59,7 @@ public class AdminMenu {
             case "4": doDelete();       break;
             case "5": doPending();      break;
             case "6": doAudit();        break;
-            case "7": doListReserve();  break;
+            case "7": doListAll();      break;
             case "8": doQueryReserve(); break;
             case "9": doListUsers();    break;
             default:  System.out.println("输入有误，请重新选择！");
@@ -77,11 +75,11 @@ public class AdminMenu {
         String location = sc.nextLine().trim();
         System.out.print("描述（可空）：");
         String desc = sc.nextLine().trim();
-        printResult(resourceService.add(name, type, location, desc, operator));
+        printResult(resourceController.add(name, type, location, desc, operator));
     }
 
-    private void doQueryAll(){
-        printResult(resourceService.queryAll(operator));
+    private void doQueryAll() {
+        printResult(resourceController.queryAll(operator));
     }
 
     private void doUpdate() {
@@ -93,65 +91,52 @@ public class AdminMenu {
         String location = sc.nextLine().trim();
         System.out.print("新状态（AVAILABLE/OCCUPIED/DISABLED，回车不改）：");
         String status = sc.nextLine().trim();
-        printResult(resourceService.update(id, name, location, status, operator));
+        printResult(resourceController.update(id, name, location, status, operator));
     }
 
     private void doDelete() {
         System.out.print("要删除的资源 ID：");
         String id = sc.nextLine().trim();
-        // 跨模块校验：有已通过的预约则禁止删除（任务19 由 Service 组合完成）
-        if (reserveService.isReferencedByReserve(id)) {
-            System.out.println("[失败] 该资源存在已通过的预约记录，禁止删除");
-            return;
-        }
-        printResult(resourceService.delete(id, operator));
+        printResult(resourceController.delete(id, operator));
     }
 
     private void doPending() {
-        printResult(reserveService.listPending(operator));
+        printResult(reserveController.pending(operator));
     }
 
     private void doAudit() {
-        printResult(reserveService.listPending(operator));
+        printResult(reserveController.pending(operator));
         System.out.print("要审核的预约编号：");
         String recordId = sc.nextLine().trim();
         System.out.print("审核结果（1 通过 / 2 驳回）：");
         String flag = sc.nextLine().trim();
         if ("1".equals(flag)) {
-            printResult(reserveService.auditPass(recordId, operator));
+            printResult(reserveController.auditPass(recordId, operator));
         } else if ("2".equals(flag)) {
             System.out.print("请输入驳回原因：");
             String reason = sc.nextLine().trim();
-            printResult(reserveService.auditReject(recordId, reason, operator));
+            printResult(reserveController.auditReject(recordId, reason, operator));
         } else {
             System.out.println("[失败] 审核结果只能输入 1 或 2");
         }
-
     }
 
-    private void doListReserve() {
-        printResult(reserveService.listAll(operator));
+    private void doListAll() {
+        printResult(reserveController.all(operator));
     }
 
     private void doQueryReserve() {
-            System.out.print("资源 ID（回车跳过）：");
+        System.out.print("资源 ID（回车跳过）：");
         String resourceId = sc.nextLine().trim();
         System.out.print("申请人（回车跳过）：");
         String applicant = sc.nextLine().trim();
         System.out.print("状态（PENDING/PASS/REJECT/CANCEL，回车跳过）：");
-        String statusText = sc.nextLine().trim();
-        ReserveStatus status;
-        try {
-            status = reserveService.parseStatus(statusText);
-        } catch (IllegalArgumentException e) {
-            System.out.println("[失败] 状态只能是 PENDING / PASS / REJECT / CANCEL");
-            return;
-        }
-        printResult(reserveService.query(resourceId, applicant, status, operator));
+        String status = sc.nextLine().trim();
+        printResult(reserveController.query(resourceId, applicant, status, operator));
     }
 
     private void doListUsers() {
-        printResult(userService.queryAll(operator));
+        printResult(userController.queryAll(operator));
     }
 
     private void printResult(Result<?> result) {
@@ -165,9 +150,14 @@ public class AdminMenu {
         }
         System.out.println("[成功] " + result.getMsg());
         Object data = result.getData();
-        if (data instanceof java.util.List) {
-            for (Object o : (java.util.List<?>) data) {
-                System.out.println(o);
+        if (data instanceof List) {
+            List<?> list = (List<?>) data;
+            if (list.isEmpty()) {
+                System.out.println("（暂无数据）");
+            } else {
+                for (Object o : list) {
+                    System.out.println(o);
+                }
             }
         } else if (data != null) {
             System.out.println(data);

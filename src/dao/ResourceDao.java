@@ -2,8 +2,8 @@ package dao;
 
 
 import entity.CampusResource;
-import entity.ResourceStatus;
-import exception.BusinessException;
+import enums.ResourceStatus;
+import common.BusinessException;
 import utils.FileUtil;
 
 import java.io.*;

@@ -1,5 +1,7 @@
 package entity;
 
+import enums.ReserveStatus;
+
 import java.time.LocalDateTime;
 
 /**

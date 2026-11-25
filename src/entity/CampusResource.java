@@ -1,4 +1,7 @@
 package entity;
+
+import enums.ResourceStatus;
+
 /**
  * 校园资源实体：只承载数据，不写业务逻辑*/
 public class CampusResource {
