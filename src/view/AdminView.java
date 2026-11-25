@@ -4,9 +4,13 @@ import common.Result;
 import controller.ReserveController;
 import controller.ResourceController;
 import controller.UserController;
+import entity.ResourceStatDTO;
 import entity.User;
+import entity.UserStatDTO;
+import enums.ReserveStatus;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -47,6 +51,10 @@ public class AdminView {
         System.out.println("7. 查看全部预约");
         System.out.println("8. 按条件查询预约");
         System.out.println("9. 查看全部用户");
+        System.out.println("10. 资源预约统计报表");
+        System.out.println("11. 热门资源 TOP 排行");
+        System.out.println("12. 用户预约统计");
+        System.out.println("13. 全局预约状态汇总");
         System.out.println("0. 退出登录");
         System.out.print("请输入选项：");
     }
@@ -62,6 +70,10 @@ public class AdminView {
             case "7": doListAll();      break;
             case "8": doQueryReserve(); break;
             case "9": doListUsers();    break;
+            case "10": doStat();        break;
+            case "11": doTopN();        break;
+            case "12": doUserStat();    break;
+            case "13": doStatusSummary(); break;
             default:  System.out.println("输入有误，请重新选择！");
         }
     }
@@ -137,6 +149,77 @@ public class AdminView {
 
     private void doListUsers() {
         printResult(userController.queryAll(operator));
+    }
+
+    /* ==================== 统计报表（视图只负责展示） ==================== */
+
+    private void doStat() {
+        Result<List<ResourceStatDTO>> result = reserveController.statByResource();
+        if (!result.isSuccess()) {
+            System.out.println("[失败] " + result.getMsg());
+            return;
+        }
+        printStatTable(result.getData());
+    }
+
+    private void doTopN() {
+        System.out.print("要展示前几名：");
+        int n;
+        try {
+            n = Integer.parseInt(sc.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("[失败] 请输入数字");
+            return;
+        }
+        Result<List<ResourceStatDTO>> result = reserveController.topN(n);
+        if (!result.isSuccess()) {
+            System.out.println("[失败] " + result.getMsg());
+            return;
+        }
+        printStatTable(result.getData());
+    }
+
+    private void doUserStat() {
+        Result<List<UserStatDTO>> result = reserveController.statByUser();
+        if (!result.isSuccess()) {
+            System.out.println("[失败] " + result.getMsg());
+            return;
+        }
+        if (result.getData().isEmpty()) {
+            System.out.println("（暂无预约数据，报表为空）");
+            return;
+        }
+        for (UserStatDTO d : result.getData()) {
+            System.out.println(d);
+        }
+    }
+
+    private void doStatusSummary() {
+        Result<Map<ReserveStatus, Long>> result = reserveController.statusSummary();
+        if (!result.isSuccess()) {
+            System.out.println("[失败] " + result.getMsg());
+            return;
+        }
+        System.out.println("---------- 全局预约状态汇总 ----------");
+        for (Map.Entry<ReserveStatus, Long> e : result.getData().entrySet()) {
+            System.out.printf("%-8s %d 条%n", e.getKey().getDesc(), e.getValue());
+        }
+    }
+
+    /** 统计表打印：通过率转百分比保留 1 位小数 */
+    private void printStatTable(List<ResourceStatDTO> list) {
+        if (list.isEmpty()) {
+            System.out.println("（暂无预约数据，报表为空）");
+            return;
+        }
+        System.out.printf("%-6s %-14s %-8s %-8s %-8s %-8s %-8s%n",
+                "资源ID", "资源名称", "总申请", "通过", "驳回", "取消", "通过率");
+        for (ResourceStatDTO d : list) {
+            System.out.printf("%-6s %-14s %-8d %-8d %-8d %-8d %-8s%n",
+                    d.getResourceId(), d.getResourceName(), d.getTotalApplyCount(),
+                    d.getPassCount(), d.getRejectCount(), d.getCancelCount(),
+                    String.format("%.1f%%", d.getPassRate() * 100));
+        }
     }
 
     private void printResult(Result<?> result) {

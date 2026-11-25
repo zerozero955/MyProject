@@ -3,11 +3,14 @@ package controller;
 import common.BusinessException;
 import common.Result;
 import entity.ReserveRecord;
+import entity.ResourceStatDTO;
 import entity.User;
+import entity.UserStatDTO;
 import enums.ReserveStatus;
 import service.ReserveRecordService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 预约控制器：时间字符串的解析交给 Service 的 parseTime，本类只负责转发与异常兜底
@@ -83,6 +86,22 @@ public class ReserveController {
         }
         return reserveService.query(resourceId == null ? "" : resourceId.trim(),
                 applicant == null ? "" : applicant.trim(), status, admin);
+    }
+
+    public Result<List<ResourceStatDTO>> statByResource() {
+        return reserveService.statByResource();
+    }
+
+    public Result<List<ResourceStatDTO>> topN(int n) {
+        return reserveService.topN(n);
+    }
+
+    public Result<List<UserStatDTO>> statByUser() {
+        return reserveService.statByUser();
+    }
+
+    public Result<Map<ReserveStatus, Long>> statusSummary() {
+        return reserveService.statusSummary();
     }
 
 

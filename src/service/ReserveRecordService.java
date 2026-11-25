@@ -246,6 +246,81 @@ public class ReserveRecordService {
                         && ReserveStatus.PASS == r.getStatus());
     }
 
+    /* ==================== 统计报表（全部使用 Stream 收集器） ==================== */
+    /** 统计1：按资源分组，聚合各种状态的数量与通过率 */
+    public Result<List<ResourceStatDTO>> statByResource() {
+        Map<String, List<ReserveRecord>> grouped = records.stream()
+                .collect(Collectors.groupingBy(ReserveRecord::getResourceId));
+
+        List<ResourceStatDTO> list = grouped.entrySet().stream()
+                .map(entry -> {
+                    List<ReserveRecord> group = entry.getValue();
+                    long total = group.size();
+                    long pass = group.stream()
+                            .filter(r -> ReserveStatus.PASS == r.getStatus()).count();
+                    long reject = group.stream()
+                            .filter(r -> ReserveStatus.REJECT == r.getStatus()).count();
+                    long cancel = group.stream()
+                            .filter(r -> ReserveStatus.CANCEL == r.getStatus()).count();
+                    // 除零保护：没有申请记录时通过率给 0
+                    double rate = total == 0 ? 0.0 : (double) pass / total;
+                    // 资源被删除时用 Optional 兜底，报表不报错
+                    String name = resourceService.findById(entry.getKey())
+                            .map(CampusResource::getName)
+                            .orElse("资源已删除");
+                    return new ResourceStatDTO(entry.getKey(), name, total, pass, reject, cancel, rate);
+                })
+                .sorted(Comparator.comparing(ResourceStatDTO::getResourceId))
+                .collect(Collectors.toList());
+
+        return Result.success("资源预约统计共 " + list.size() + " 项", list);
+    }
+
+    /** 统计2：热度排行 TOP N，按通过次数降序 + limit 截断 */
+    public Result<List<ResourceStatDTO>> topN(int n) {
+        int limit = n <= 0 ? 10 : n;
+        Result<List<ResourceStatDTO>> all = statByResource();
+        if (!all.isSuccess()) {
+            return all;
+        }
+        List<ResourceStatDTO> top = all.getData().stream()
+                .sorted(Comparator.comparingLong(ResourceStatDTO::getPassCount).reversed())
+                .limit(limit)
+                .collect(Collectors.toList());
+        return Result.success("热门资源 TOP " + limit, top);
+    }
+
+    /** 统计3：按申请人分组，统计每个人的提交 / 通过 / 驳回 */
+    public Result<List<UserStatDTO>> statByUser() {
+        Map<String, List<ReserveRecord>> byUser = records.stream()
+                .collect(Collectors.groupingBy(ReserveRecord::getApplicantUsername));
+
+        List<UserStatDTO> list = byUser.entrySet().stream()
+                .map(entry -> {
+                    List<ReserveRecord> group = entry.getValue();
+                    long total = group.size();
+                    long pass = group.stream()
+                            .filter(r -> ReserveStatus.PASS == r.getStatus()).count();
+                    long reject = group.stream()
+                            .filter(r -> ReserveStatus.REJECT == r.getStatus()).count();
+                    return new UserStatDTO(entry.getKey(), total, pass, reject);
+                })
+                .sorted(Comparator.comparingLong(UserStatDTO::getTotalApplyCount).reversed())
+                .collect(Collectors.toList());
+        return Result.success("用户预约统计共 " + list.size() + " 人", list);
+    }
+
+    /** 统计4：全局状态汇总（groupingBy + counting） */
+    public Result<Map<ReserveStatus, Long>> statusSummary() {
+        Map<ReserveStatus, Long> summary = records.stream()
+                .collect(Collectors.groupingBy(ReserveRecord::getStatus, Collectors.counting()));
+        for (ReserveStatus s : ReserveStatus.values()) {
+            summary.putIfAbsent(s, 0L);        // 没有记录的状态补 0，报表不出现空行
+        }
+        return Result.success("全局预约状态汇总", summary);
+    }
+
+
     /* ==================== 工具方法 ==================== */
     private ReserveRecord require(String recordId) {
         return findById(recordId).orElseThrow(
