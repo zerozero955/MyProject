@@ -3,6 +3,7 @@ package service;
 import common.BusinessException;
 import common.Result;
 import common.annotation.OperationLog;
+import common.util.ThreadPoolUtil;
 import dao.DaoFactory;
 import dao.ReserveRecordDao;
 import entity.*;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -82,7 +84,7 @@ public class ReserveRecordService {
     /* ==================== 学生端 ==================== */
 
     @OperationLog("提交预约申请")
-    public Result<ReserveRecord> submit(String resourceId, LocalDateTime start, LocalDateTime end,
+    public synchronized Result<ReserveRecord> submit(String resourceId, LocalDateTime start, LocalDateTime end,
                                         String remark, User student) {
         if (student == null || !"student".equals(student.getRole())) {
             return Result.fail("仅学生可以提交预约申请");
@@ -129,7 +131,7 @@ public class ReserveRecordService {
                         && end.isAfter(r.getReserveStartTime()));
     }
 
-    public Result<List<ReserveRecord>> listMine(User student) {
+    public synchronized Result<List<ReserveRecord>> listMine(User student) {
         List<ReserveRecord> mine = records.stream()
                 .filter(r -> r.getApplicantUsername().equals(student.getUsername()))
                 .sorted(Comparator.comparing(ReserveRecord::getApplyTime).reversed())
@@ -139,7 +141,7 @@ public class ReserveRecordService {
 
     /** 取消：只允许 PENDING / PASS，且必须断言状态机 */
     @OperationLog("取消预约")
-    public Result<ReserveRecord> cancel(String recordId, User student) {
+    public synchronized Result<ReserveRecord> cancel(String recordId, User student) {
          Optional<ReserveRecord> opt = findById(recordId);
             if (!opt.isPresent()) {
             return Result.fail("未找到编号为 " + recordId + " 的预约记录");
@@ -181,7 +183,7 @@ public class ReserveRecordService {
         return Result.success("待审核预约共 " + list.size() + " 条", list);
     }
 
-    public Result<List<ReserveRecord>> listAll(User admin) {
+    public synchronized Result<List<ReserveRecord>> listAll(User admin) {
         if (!isAdmin(admin)) {
             return Result.fail("仅管理员可查看全部预约");
         }
@@ -193,7 +195,7 @@ public class ReserveRecordService {
 
     /** 审核通过：断言 -> 回填审核时间 -> 资源置占用 */
     @OperationLog("审核预约通过")
-    public Result<ReserveRecord> auditPass(String recordId, User admin) {
+    public synchronized Result<ReserveRecord> auditPass(String recordId, User admin) {
         if (!isAdmin(admin)) {
             throw new NoPermissionToAuditException();
         }
@@ -211,7 +213,7 @@ public class ReserveRecordService {
     }
     /** 审核驳回：断言 -> 驳回原因非空 -> 资源不变 */
     @OperationLog("审核预约驳回")
-    public Result<ReserveRecord> auditReject(String recordId, String reason, User admin) {
+    public synchronized Result<ReserveRecord> auditReject(String recordId, String reason, User admin) {
         if (!isAdmin(admin)) {
             throw new NoPermissionToAuditException();
         }
@@ -326,6 +328,10 @@ public class ReserveRecordService {
         return Result.success("全局预约状态汇总", summary);
     }
 
+    /** 异步统计：把 Stream 聚合丢到线程池，控制台不用等 */
+    public Future<Result<List<ResourceStatDTO>>> statByResourceAsync(){
+        return ThreadPoolUtil.submit(this::statByResource);
+    }
 
     /* ==================== 工具方法 ==================== */
     private ReserveRecord require(String recordId) {

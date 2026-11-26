@@ -1,2 +1,2 @@
-R001,resource1,教室,OCCUPIED,1,
+R001,resource1,教室,AVAILABLE,1,
 R002,002,教室,AVAILABLE,location,

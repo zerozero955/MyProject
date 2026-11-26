@@ -1,3 +1,8 @@
 L1795597662145|admin|2026-11-25T17:07:42.145450700|UserService.login|用户登录|admin; 123456; |成功：登录成功，欢迎您，管理员！|
 L1795597687847|student|2026-11-25T17:08:07.847048600|UserService.login|用户登录|student; 123456; |成功：登录成功，欢迎您，同学！|
 L1795662819195|admin|2026-11-26T11:13:39.195249200|UserService.login|用户登录|admin; 123456; |成功：登录成功，欢迎您，管理员！，数据：User{password=123456,role=admin,username=admin,registerTime=2026-11-04T15:03:24}|
+L1795680128622|admin|2026-11-26T16:02:08.622262200|UserService.login|用户登录|admin; 123456; |成功：登录成功，欢迎您，管理员！，数据：User{password=123456,role=admin,username=admin,registerTime=2026-11-04T15:03:24}|
+L1795680162854|student|2026-11-26T16:02:42.855101500|UserService.login|用户登录|student; 123456; |成功：登录成功，欢迎您，同学！，数据：User{password=123456,role=student,username=student,registerTime=2026-11-04T15:03:24}|
+L1795680178001|student|2026-11-26T16:02:58.001888100|ReserveRecordService.cancel|取消预约|Y001; entity.User{username='student', role='student', registerTime=2026-11-04T15:03:24}; |成功：预约已取消，数据：|
+L1795680210820|admin|2026-11-26T16:03:30.820961100|UserService.login|用户登录|admin; 123456; |成功：登录成功，欢迎您，管理员！，数据：User{password=123456,role=admin,username=admin,registerTime=2026-11-04T15:03:24}|
+L1795680229567|admin|2026-11-26T16:03:49.567323|ResourceService.add|新增校园资源|; ; ; ; entity.User{username='admin', role='admin', registerTime=2026-11-04T15:03:24}; |失败：资源名称不能为空|

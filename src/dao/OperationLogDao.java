@@ -1,5 +1,6 @@
 package dao;
 
+import common.util.ThreadPoolUtil;
 import entity.OperationLogRecord;
 import utils.FileUtil;
 
@@ -22,29 +23,42 @@ public class OperationLogDao {
     }
     private static final String FILE = "operation_log.txt";
     private final List<OperationLogRecord> logs = new ArrayList<>();
+    private static final Object FILE_LOCK = new Object();
 
     private OperationLogDao() {
         this.logs.addAll(loadAll());
     }
 
 
-    /** 追加一条日志：内存 + 文件 */
+    /** 追加一条日志：内存立即加锁写入，文件交给线程池异步落盘，主线程不等磁盘 */
     public void append(OperationLogRecord log) {
-        logs.add(log);
-        FileUtil.ensureFile(FILE);
-        try (BufferedWriter bw = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(FILE, true), StandardCharsets.UTF_8))) {
-            bw.write(toLine(log));
-            bw.newLine();
-            bw.flush();
-        } catch (IOException e) {
-            // 日志写失败不能影响业务，只提示不抛出
-            System.out.println("[提示] 操作日志写入失败");
+        synchronized (logs) {
+            logs.add(log);
+        }
+        ThreadPoolUtil.submit(() -> writeToFile(log));
+
+    }
+
+    /** 写文件加锁：多线程同时写会串行，内容不会交错、不会覆盖 */
+    private void writeToFile(OperationLogRecord log) {
+        synchronized (FILE_LOCK) {
+            FileUtil.ensureFile(FILE);
+            try (BufferedWriter bw = new BufferedWriter(
+                    new OutputStreamWriter(new FileOutputStream(FILE, true), StandardCharsets.UTF_8))) {
+                bw.write(toLine(log));
+                bw.newLine();
+                bw.flush();
+            } catch (IOException e) {
+                System.out.println("[提示] 操作日志写入失败");
+            }
         }
     }
 
+
     public List<OperationLogRecord> findAll() {
-        return new ArrayList<>(logs);
+        synchronized (logs) {
+            return new ArrayList<>(logs);
+        }
     }
 
     private List<OperationLogRecord> loadAll() {
