@@ -3,6 +3,7 @@ package common;
 import common.annotation.OperationLog;
 import dao.OperationLogDao;
 import entity.OperationLogRecord;
+import common.util.ObjectReflectUtil;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -58,9 +59,10 @@ public class LogAspect {
         log.setOperateTime(LocalDateTime.now());
         log.setMethodFullName(method.getDeclaringClass().getSimpleName() + "." + method.getName());
         log.setOperationDesc(annotation.value());
-        log.setParams(buildParams(args));
+        log.setParams(serializeArgs(args));;
         log.setResultInfo(result.isSuccess()
-                ? "成功：" + result.getMsg()
+                ? "成功：" + result.getMsg() + "，数据："
+                        + ObjectReflectUtil.objectToString(result.getData())
                 : "失败：" + result.getMsg());
         log.setExceptionMsg(exceptionMsg);
 
@@ -69,7 +71,8 @@ public class LogAspect {
 
     }
 
-    private static String buildParams(Object[] args) {
+    /** 入参序列化：每个参数都走反射工具，输出形如 User{username=zs, role=student} */
+    private static String serializeArgs(Object[] args) {
         if (args == null || args.length == 0) {
             return "";
         }

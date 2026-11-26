@@ -1,2 +1,3 @@
 L1795597662145|admin|2026-11-25T17:07:42.145450700|UserService.login|用户登录|admin; 123456; |成功：登录成功，欢迎您，管理员！|
 L1795597687847|student|2026-11-25T17:08:07.847048600|UserService.login|用户登录|student; 123456; |成功：登录成功，欢迎您，同学！|
+L1795662819195|admin|2026-11-26T11:13:39.195249200|UserService.login|用户登录|admin; 123456; |成功：登录成功，欢迎您，管理员！，数据：User{password=123456,role=admin,username=admin,registerTime=2026-11-04T15:03:24}|

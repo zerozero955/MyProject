@@ -1,6 +1,5 @@
 package controller;
 
-import common.BusinessException;
 import common.LogAspect;
 import common.Result;
 import entity.ReserveRecord;
@@ -9,6 +8,7 @@ import entity.User;
 import entity.UserStatDTO;
 import enums.ReserveStatus;
 import service.ReserveRecordService;
+import common.util.ObjectReflectUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -22,10 +22,15 @@ public class ReserveController {
 
     public Result<ReserveRecord> submit(String resourceId, String startText, String endText,
                                         String remark, User student){
-       if (isEmpty(resourceId)){
-           return Result.fail("资源ID不能为空");
-       }
-       return (Result<ReserveRecord>) LogAspect.invoke(reserveService, "submit",
+        ReserveRecord apply = new ReserveRecord();
+        apply.setResourceId(isEmpty(resourceId) ? null : resourceId.trim());
+        apply.setReserveStartTime(reserveService.parseTime(startText));
+        apply.setReserveEndTime(reserveService.parseTime(endText));
+        apply.setRemark(remark);
+        if (ObjectReflectUtil.isAllFieldNull(apply)) {
+            return Result.fail("预约参数不能为空");
+        }
+        return (Result<ReserveRecord>) LogAspect.invoke(reserveService, "submit",
                 new Class<?>[]{String.class, java.time.LocalDateTime.class,
                         java.time.LocalDateTime.class, String.class, User.class},
                 new Object[]{resourceId.trim(), reserveService.parseTime(startText),
