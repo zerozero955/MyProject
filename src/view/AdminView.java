@@ -4,14 +4,18 @@ import common.Result;
 import controller.ReserveController;
 import controller.ResourceController;
 import controller.UserController;
+import dao.OperationLogDao;
+import entity.OperationLogRecord;
 import entity.ResourceStatDTO;
 import entity.User;
 import entity.UserStatDTO;
 import enums.ReserveStatus;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 /**
  * 管理员视图：9 项菜单，只负责收集输入与展示 Result
@@ -55,6 +59,8 @@ public class AdminView {
         System.out.println("11. 热门资源 TOP 排行");
         System.out.println("12. 用户预约统计");
         System.out.println("13. 全局预约状态汇总");
+        System.out.println("14. 查看全部操作日志");
+        System.out.println("15. 按用户名筛选操作日志");
         System.out.println("0. 退出登录");
         System.out.print("请输入选项：");
     }
@@ -74,6 +80,8 @@ public class AdminView {
             case "11": doTopN();        break;
             case "12": doUserStat();    break;
             case "13": doStatusSummary(); break;
+            case "14": doAllLogs();     break;
+            case "15": doLogsByUser();  break;
             default:  System.out.println("输入有误，请重新选择！");
         }
     }
@@ -220,6 +228,33 @@ public class AdminView {
                     d.getPassCount(), d.getRejectCount(), d.getCancelCount(),
                     String.format("%.1f%%", d.getPassRate() * 100));
         }
+    }
+
+    /* ==================== 操作日志查询（学生菜单不开放） ==================== */
+    private void doAllLogs() {
+        List<OperationLogRecord> logs = OperationLogDao.getInstance().findAll();
+        if (logs.isEmpty()) {
+            System.out.println("（暂无操作日志）");
+            return;
+        }
+        // 按操作时间倒序：Stream 排序
+        logs.stream()
+                .sorted(Comparator.comparing(OperationLogRecord::getOperateTime).reversed())
+                .forEach(System.out::println);
+    }
+
+    private void doLogsByUser() {
+        System.out.print("请输入用户名：");
+        String username = sc.nextLine().trim();
+        List<OperationLogRecord> logs = OperationLogDao.getInstance().findAll().stream()
+                .filter(l -> username.equals(l.getUsername()))
+                .sorted(Comparator.comparing(OperationLogRecord::getOperateTime).reversed())
+                .collect(Collectors.toList());
+        if (logs.isEmpty()) {
+            System.out.println("（该用户暂无操作日志）");
+            return;
+        }
+        logs.forEach(System.out::println);
     }
 
     private void printResult(Result<?> result) {

@@ -1,6 +1,7 @@
 package service;
 
 import common.Result;
+import common.annotation.OperationLog;
 import dao.DaoFactory;
 import dao.ResourceDao;
 import entity.CampusResource;
@@ -33,6 +34,7 @@ public class ResourceService {
         this.resources = resourceDao.loadAll();
     }
 
+    @OperationLog("新增校园资源")
     public Result<CampusResource> add(String name, String type, String location,
                                       String description, User operator) {
         if (!isAdmin(operator)) {
@@ -75,6 +77,7 @@ public class ResourceService {
         return Result.success("共匹配到 " + list.size() + " 条资源", list);
     }
 
+    @OperationLog("修改校园资源")
     public Result<CampusResource> update(String id, String name, String location,
                                         String statusText, User operator) {
         if (!isAdmin(operator)) {
@@ -102,6 +105,7 @@ public class ResourceService {
         return Result.success("资源修改成功", target);
     }
 
+    @OperationLog("删除校园资源")
     public Result<Void> delete(String id, User operator) {
         if (!isAdmin(operator)) {
             return Result.fail("该操作仅管理员可执行");

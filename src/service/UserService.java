@@ -1,6 +1,7 @@
 package service;
 
 import common.Result;
+import common.annotation.OperationLog;
 import dao.DaoFactory;
 import dao.UserDao;
 import entity.User;
@@ -32,6 +33,7 @@ public class UserService {
         }
     }
 
+    @OperationLog("用户注册")
     public Result<User> register(String username, String password){
         if (username == null || username.trim().isEmpty()
                 || password == null || password.isEmpty()) {
@@ -53,6 +55,7 @@ public class UserService {
         return Result.success("注册成功", user);
     }
 
+    @OperationLog("用户登录")
     public Result<User> login(String username, String password){
         if (username == null || username.trim().isEmpty()
                 || password == null || password.isEmpty()) {

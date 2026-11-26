@@ -1,6 +1,7 @@
 package controller;
 
 import common.BusinessException;
+import common.LogAspect;
 import common.Result;
 import entity.ReserveRecord;
 import entity.ResourceStatDTO;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 预约控制器：时间字符串的解析交给 Service 的 parseTime，本类只负责转发与异常兜底
+ * 预约控制器：提交 / 通过 / 驳回 / 取消走切面；查询与统计直接调 Service
  */
 public class ReserveController {
 
@@ -24,41 +25,31 @@ public class ReserveController {
        if (isEmpty(resourceId)){
            return Result.fail("资源ID不能为空");
        }
-       return reserveService.submit(resourceId.trim(),
-               reserveService.parseTime(startText),
-               reserveService.parseTime(endText),
-               remark,
-               student);
-    }
+       return (Result<ReserveRecord>) LogAspect.invoke(reserveService, "submit",
+                new Class<?>[]{String.class, java.time.LocalDateTime.class,
+                        java.time.LocalDateTime.class, String.class, User.class},
+                new Object[]{resourceId.trim(), reserveService.parseTime(startText),
+                        reserveService.parseTime(endText), remark, student},
+                student.getUsername());
 
-    public Result<List<ReserveRecord>> myList(User student){
-        return reserveService.listMine(student);
     }
-
     public Result<ReserveRecord> cancel(String recordId, User student) {
         if (isEmpty(recordId)) {
             return Result.fail("预约编号不能为空");
         }
-        return reserveService.cancel(recordId.trim(), student);
-    }
+        return (Result<ReserveRecord>) LogAspect.invoke(reserveService, "cancel",
+                new Class<?>[]{String.class, User.class},
+                new Object[]{recordId.trim(), student}, student.getUsername());
 
-    public Result<List<ReserveRecord>> pending(User admin) {
-        return reserveService.listPending(admin);
-    }
-
-    public Result<List<ReserveRecord>> all(User admin) {
-        return reserveService.listAll(admin);
     }
 
     public Result<ReserveRecord> auditPass(String recordId, User admin) {
         if (isEmpty(recordId)) {
             return Result.fail("预约编号不能为空");
         }
-        try {
-            return reserveService.auditPass(recordId.trim(), admin);
-        } catch (BusinessException e) {
-            return Result.fail(e.getMessage());
-        }
+        return (Result<ReserveRecord>) LogAspect.invoke(reserveService, "auditPass",
+                new Class<?>[]{String.class, User.class},
+                new Object[]{recordId.trim(), admin}, admin.getUsername());
     }
 
     public Result<ReserveRecord> auditReject(String recordId, String reason, User admin) {
@@ -68,12 +59,27 @@ public class ReserveController {
         if (isEmpty(reason)) {
             return Result.fail("驳回原因不能为空");
         }
-        try {
-            return reserveService.auditReject(recordId.trim(), reason.trim(), admin);
-        } catch (BusinessException e) {
-            return Result.fail(e.getMessage());
-        }
+        return (Result<ReserveRecord>) LogAspect.invoke(reserveService, "auditReject",
+                new Class<?>[]{String.class, String.class, User.class},
+                new Object[]{recordId.trim(), reason.trim(), admin}, admin.getUsername());
     }
+
+    public Result<List<ReserveRecord>> myList(User student) {
+        return reserveService.listMine(student);
+    }
+
+
+    public Result<List<ReserveRecord>> pending(User admin) {
+        return reserveService.listPending(admin);
+    }
+
+    public Result<List<ReserveRecord>> all(User admin) {
+        return reserveService.listAll(admin);
+    }
+
+
+
+
 
     /** 状态字符串转枚举，非法值统一给中文提示，避免抛 IllegalArgumentException 到界面 */
     public Result<List<ReserveRecord>> query(String resourceId, String applicant,

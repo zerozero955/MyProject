@@ -20,4 +20,9 @@ public class DaoFactory {
     public static ReserveRecordDao getReserveRecordDao(){
         return ReserveRecordDao.getInstance();
     }
+
+    public static OperationLogDao getOperationLogDao() {
+        return OperationLogDao.getInstance();
+    }
+
 }

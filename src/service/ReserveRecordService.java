@@ -2,6 +2,7 @@ package service;
 
 import common.BusinessException;
 import common.Result;
+import common.annotation.OperationLog;
 import dao.DaoFactory;
 import dao.ReserveRecordDao;
 import entity.*;
@@ -79,6 +80,8 @@ public class ReserveRecordService {
 
 
     /* ==================== 学生端 ==================== */
+
+    @OperationLog("提交预约申请")
     public Result<ReserveRecord> submit(String resourceId, LocalDateTime start, LocalDateTime end,
                                         String remark, User student) {
         if (student == null || !"student".equals(student.getRole())) {
@@ -135,6 +138,7 @@ public class ReserveRecordService {
     }
 
     /** 取消：只允许 PENDING / PASS，且必须断言状态机 */
+    @OperationLog("取消预约")
     public Result<ReserveRecord> cancel(String recordId, User student) {
          Optional<ReserveRecord> opt = findById(recordId);
             if (!opt.isPresent()) {
@@ -188,6 +192,7 @@ public class ReserveRecordService {
     }
 
     /** 审核通过：断言 -> 回填审核时间 -> 资源置占用 */
+    @OperationLog("审核预约通过")
     public Result<ReserveRecord> auditPass(String recordId, User admin) {
         if (!isAdmin(admin)) {
             throw new NoPermissionToAuditException();
@@ -205,6 +210,7 @@ public class ReserveRecordService {
         return Result.success("审核通过，资源已置为占用", record);
     }
     /** 审核驳回：断言 -> 驳回原因非空 -> 资源不变 */
+    @OperationLog("审核预约驳回")
     public Result<ReserveRecord> auditReject(String recordId, String reason, User admin) {
         if (!isAdmin(admin)) {
             throw new NoPermissionToAuditException();
